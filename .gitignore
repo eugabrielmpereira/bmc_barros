@@ -1,0 +1,54 @@
+# Environment Variables (never commit secrets)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Dependencies
+/vendor/
+composer.phar
+
+# IDE / editor
+.vscode/
+.idea/
+.cursor/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# Logs
+storage/logs/*
+!storage/logs/.gitkeep
+
+# Cache
+storage/cache/*
+!storage/cache/.gitkeep
+
+# Uploads (runtime)
+storage/uploads/*
+!storage/uploads/.gitkeep
+!storage/uploads/produtos/.gitkeep
+
+# Tests
+coverage/
+.phpunit.result.cache
+.phpunit.cache/
+
+# Build / temp
+build/
+dist/
+*.tmp
+*.bak
+.tmp/
+*.old
+*.old2

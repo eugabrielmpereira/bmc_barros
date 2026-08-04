@@ -1,0 +1,65 @@
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: #f7f7f7;
+  color: #222;
+}
+
+.error-page__box {
+  max-width: 560px;
+  margin: 5rem auto;
+  padding: 2rem;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.error-page__box--narrow {
+  max-width: 520px;
+}
+
+.error-page__code {
+  font-size: 3rem;
+  margin: 0;
+}
+
+.error-page__code--warning {
+  color: #b45309;
+}
+
+.error-page__code--forbidden {
+  color: #b91c1c;
+}
+
+.error-page__code--not-found {
+  color: #132f7a;
+}
+
+.error-page__message {
+  line-height: 1.6;
+}
+
+.error-page__debug {
+  text-align: left;
+  font-size: 0.8rem;
+  overflow: auto;
+  background: #f1f5f9;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.error-page__actions {
+  margin-top: 1.25rem;
+}
+
+.error-page__actions a {
+  color: #1d4ed8;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.error-page__actions a:hover {
+  text-decoration: underline;
+}
