@@ -7,16 +7,16 @@ $items = $order['items'] ?? [];
 <!doctype html>
 <html lang="pt-BR">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pedido <?= e((string) ($order['public_reference'] ?? '')) ?> | <?= e($clientName) ?></title>
-    <link rel="stylesheet" href="<?= client_asset('css/style.css') ?>" />
-    <?php commerce_page_styles(); ?>
+    <?php
+      $pageTitle = 'Pedido';
+      $noindex = true;
+      require __DIR__ . '/../partials/head.php';
+    ?>
   </head>
   <body>
     <?php site_topbar(['client' => $client]); ?>
 
-    <main class="commerce-page">
+    <main id="conteudo" class="commerce-page">
       <div class="commerce-page-header">
         <p class="eyebrow">Meus pedidos</p>
         <h1><?= e((string) ($order['public_reference'] ?? '')) ?></h1>

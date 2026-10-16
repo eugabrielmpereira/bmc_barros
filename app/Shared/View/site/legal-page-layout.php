@@ -12,6 +12,10 @@ $pageTitle = (string) ($pageTitle ?? 'Documento legal');
 <!doctype html>
 <html lang="pt-BR">
   <head>
+    <?php $clientHead = client_partial_override('head'); ?>
+    <?php if ($clientHead !== null): ?>
+      <?php require $clientHead; ?>
+    <?php else: ?>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title><?= e($pageTitle) ?> | <?= e($clientName) ?></title>
@@ -19,11 +23,12 @@ $pageTitle = (string) ($pageTitle ?? 'Documento legal');
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;700;800;900&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="<?= client_asset('css/style.css') ?>" />
+    <?php endif; ?>
   </head>
   <body>
     <?php site_topbar(['client' => $client]); ?>
 
-    <main class="legal-page">
+    <main id="conteudo" class="legal-page">
       <header class="legal-page__header">
         <p class="eyebrow"><?= e($clientName) ?></p>
         <h1><?= e($pageTitle) ?></h1>

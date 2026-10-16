@@ -381,9 +381,10 @@ class ProductRepository extends Repository
             return null;
         }
 
-        $sql = "SELECT p.*, c.nome AS categoria_nome, c.slug AS categoria_slug
+        [$brandSelect, $brandJoin] = $this->brandSelectAndJoin();
+        $sql = "SELECT p.*, c.nome AS categoria_nome, c.slug AS categoria_slug{$brandSelect}
                 FROM {$this->table} p
-                JOIN categorias c ON c.id = p.categoria_id
+                JOIN categorias c ON c.id = p.categoria_id{$brandJoin}
                 WHERE p.id = ? AND p.status = 'ativo'
                 LIMIT 1";
         $stmt = $this->db->prepare($sql);
@@ -395,9 +396,10 @@ class ProductRepository extends Repository
 
     private function findActiveWithCategoryBySlug(string $slug): ?array
     {
-        $sql = "SELECT p.*, c.nome AS categoria_nome, c.slug AS categoria_slug
+        [$brandSelect, $brandJoin] = $this->brandSelectAndJoin();
+        $sql = "SELECT p.*, c.nome AS categoria_nome, c.slug AS categoria_slug{$brandSelect}
                 FROM {$this->table} p
-                JOIN categorias c ON c.id = p.categoria_id
+                JOIN categorias c ON c.id = p.categoria_id{$brandJoin}
                 WHERE p.slug = ? AND p.status = 'ativo'
                 LIMIT 1";
         $stmt = $this->db->prepare($sql);
@@ -405,6 +407,18 @@ class ProductRepository extends Repository
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         return $row !== false ? $row : null;
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private function brandSelectAndJoin(): array
+    {
+        if (!$this->columnExistsOnTable($this->table, 'brand_id')) {
+            return ['', ''];
+        }
+
+        return [', b.name AS brand_name, b.slug AS brand_slug', ' LEFT JOIN brands b ON b.id = p.brand_id'];
     }
 
     private function ensureUniqueProductSlug(string $slug, int $excludeId): string

@@ -1,4 +1,6 @@
+<?php if (empty($GLOBALS['__commerce_css_in_head'])): ?>
 <link rel="stylesheet" href="<?= shared_commerce_asset('commerce.css') ?>" />
+<?php endif; ?>
 <div
   id="commerce-config"
   class="commerce-config"

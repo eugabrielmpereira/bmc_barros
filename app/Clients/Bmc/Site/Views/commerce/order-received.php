@@ -1,83 +1,110 @@
 <?php
+use Erp\Finance\Services\PaymentChargeService;
+use Erp\Finance\Support\PaymentMethod;
+use Erp\Fulfillment\Support\DeliveryMethod;
+
 $client = $client ?? client_config();
 $order = $order ?? [];
 $items = $items ?? [];
-$clientName = (string) ($client['name'] ?? 'Cliente');
-$clientLegalName = (string) ($client['legalName'] ?? $clientName);
+$charge = $pix_charge ?? null;
+$paymentMethod = $payment_method ?? PaymentMethod::parse((string) ($order['payment_method'] ?? PaymentMethod::PIX));
+$storeName = (string) ($client['name'] ?? 'Loja');
 $orderId = (int) ($order['id'] ?? 0);
 $orderReference = trim((string) ($order['public_reference'] ?? ''));
 $orderDisplayRef = $orderReference !== '' ? $orderReference : ('#' . $orderId);
-$whatsappMessage = 'Olá, ' . $clientName . '! Acabei de enviar o pedido '
-    . $orderDisplayRef . ' pelo site e aguardo retorno.';
+$isPickup = DeliveryMethod::parse((string) ($order['delivery_method'] ?? '')) === DeliveryMethod::PICKUP;
+$shippingFee = (float) ($order['shipping_fee'] ?? 0);
+$installments = max(1, (int) ($order['installments'] ?? 1));
+$itemsTotal = array_reduce($items, static fn (float $sum, array $item): float => $sum + (float) ($item['total_amount'] ?? 0), 0.0);
+$isPaid = is_array($charge) && PaymentChargeService::isPaidStatus((string) ($charge['status'] ?? ''));
+$whatsMessage = 'Olá, ' . $storeName . '! Acabei de fazer o pedido ' . $orderDisplayRef . ' pelo site.';
+$trackUrl = app_url('/acompanhar-pedido' . ($orderReference !== '' ? '?ref=' . urlencode($orderReference) : ''));
+
+$pageTitle = 'Pedido recebido';
+$noindex = true;
 ?>
 <!doctype html>
 <html lang="pt-BR">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pedido recebido | <?= e($clientName) ?></title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;700;800;900&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="<?= client_asset('css/style.css') ?>" />
-    <?php commerce_page_styles(); ?>
+    <?php require __DIR__ . '/../partials/head.php'; ?>
   </head>
   <body>
-    <?php site_topbar(['client' => $client, 'whatsappMessage' => $whatsappMessage]); ?>
+    <?php site_topbar(['client' => $client]); ?>
 
-    <main class="commerce-page">
-      <div class="commerce-page-header">
-        <p class="eyebrow">Pedido online</p>
-        <h1>Pedido recebido ✔</h1>
-        <p>Seu pedido <strong><?= e($orderDisplayRef) ?></strong> foi enviado com sucesso.</p>
-      </div>
+    <main id="conteudo" class="page">
+      <div class="wrap receipt">
+        <section class="surface receipt__head">
+          <div class="receipt__check"><?= bmc_icon('check') ?></div>
+          <h1 class="display">Pedido recebido</h1>
+          <p>Guarde o número do seu pedido:</p>
+          <span class="receipt__ref"><?= e($orderDisplayRef) ?></span>
+        </section>
 
-      <section class="commerce-layout commerce-layout--single">
-        <div class="catalog-main">
-          <div class="commerce-confirmation__steps">
-            <h2>Próximos passos</h2>
-            <ol>
-              <li>Nossa equipe confirma preços, estoque e condições de entrega ou retirada.</li>
-              <li>Entraremos em contato pelo telefone ou WhatsApp informados.</li>
-              <li>Após sua aprovação, combinamos retirada na loja ou entrega.</li>
-            </ol>
-            <p><strong>Status:</strong> Aguardando confirmação da loja</p>
-            <p><a href="<?= BASE_URL ?>/acompanhar-pedido<?= $orderReference !== '' ? '?ref=' . urlencode($orderReference) : '' ?>">Acompanhar este pedido</a></p>
-            <?php if (!empty($order['client_name'])): ?>
-              <p><strong>Cliente:</strong> <?= e((string) $order['client_name']) ?></p>
+        <?php if ($paymentMethod === PaymentMethod::CREDIT_CARD): ?>
+          <?php $invoiceUrl = is_array($charge) ? trim((string) ($charge['invoice_url'] ?? '')) : ''; ?>
+          <section class="commerce-pix-payment card-payment" aria-labelledby="pagamento-titulo">
+            <h2 id="pagamento-titulo">Pagamento com cartão<?= $installments > 1 ? ' em ' . $installments . 'x' : '' ?></h2>
+            <?php if ($isPaid): ?>
+              <p class="commerce-pix-payment__status--paid">Pagamento aprovado. A loja já está separando seu pedido.</p>
+            <?php elseif ($invoiceUrl !== ''): ?>
+              <p>Clique no botão para informar o cartão na página segura do Asaas. O pedido só é separado depois da aprovação.</p>
+              <a class="btn btn--primary btn--lg" href="<?= e($invoiceUrl) ?>" target="_blank" rel="noopener noreferrer"><?= bmc_icon('card') ?> Pagar com cartão</a>
+            <?php else: ?>
+              <p>Não conseguimos abrir o pagamento agora. A loja vai enviar o link pelo WhatsApp, ou você pode pedir pelo botão abaixo.</p>
             <?php endif; ?>
-          </div>
-
-          <?php if ($items !== []): ?>
-            <div class="commerce-confirmation__order-items">
-              <h2>Resumo do pedido</h2>
-              <?php foreach ($items as $item): ?>
-                <div class="commerce-order-line">
-                  <span><?= (int) ($item['quantity'] ?? 0) ?>× <?= e((string) ($item['product_name'] ?? 'Produto')) ?></span>
-                  <span><?= formatarPreco((float) ($item['total_amount'] ?? 0)) ?></span>
-                </div>
-              <?php endforeach; ?>
-              <div class="commerce-order-total">
-                <span>Total indicativo</span>
-                <span><?= formatarPreco((float) ($order['total_amount'] ?? 0)) ?></span>
-              </div>
-              <p class="commerce-summary__note">Valores e disponibilidade confirmados pela loja.</p>
-            </div>
+          </section>
+        <?php else: ?>
+          <?php
+            $pix_charge = $charge;
+            require SHARED_PATH . '/View/site/pix-payment-block.php';
+          ?>
+          <?php if (!is_array($charge)): ?>
+            <section class="surface receipt__block">
+              <h2>Pagamento</h2>
+              <p>A loja confirma o pedido e envia a chave Pix pelo WhatsApp.</p>
+            </section>
           <?php endif; ?>
+        <?php endif; ?>
 
-          <?php require SHARED_PATH . '/View/site/pix-payment-block.php'; ?>
+        <section class="surface receipt__block" aria-labelledby="proximos-titulo">
+          <h2 id="proximos-titulo">O que acontece agora</h2>
+          <ol class="receipt__steps">
+            <li>A loja confere o estoque e confirma seu pedido.</li>
+            <li><?= $isPickup ? 'Avisamos pelo WhatsApp quando estiver pronto para retirar.' : 'Combinamos o horário da entrega pelo WhatsApp.' ?></li>
+            <li>Você acompanha o status a qualquer momento pelo número do pedido.</li>
+          </ol>
+        </section>
 
-          <div class="commerce-summary__actions">
-            <a class="btn primary" href="<?= e(client_whatsapp_url($whatsappMessage)) ?>" target="_blank" rel="noreferrer">WhatsApp</a>
-            <a class="btn secondary" href="<?= BASE_URL ?>">Voltar ao início</a>
-            <a class="btn secondary" href="<?= BASE_URL ?>/produtos">Continuar comprando</a>
-          </div>
+        <?php if ($items !== []): ?>
+          <section class="surface receipt__block" aria-labelledby="itens-titulo">
+            <h2 id="itens-titulo">Resumo</h2>
+            <?php foreach ($items as $item): ?>
+              <div class="commerce-order-line">
+                <span><?= (int) ($item['quantity'] ?? 0) ?>× <?= e((string) ($item['product_name'] ?? 'Produto')) ?></span>
+                <span><?= formatarPreco((float) ($item['total_amount'] ?? 0)) ?></span>
+              </div>
+            <?php endforeach; ?>
+            <div class="commerce-order-line">
+              <span><?= $isPickup ? 'Retirada na loja' : 'Frete' . (!empty($order['delivery_zone_name']) ? ' (' . e((string) $order['delivery_zone_name']) . ')' : '') ?></span>
+              <span><?= $isPickup || ($shippingFee <= 0 && !empty($order['delivery_zone_name'])) ? 'Grátis' : ($shippingFee > 0 ? formatarPreco($shippingFee) : 'A combinar') ?></span>
+            </div>
+            <div class="commerce-order-total">
+              <span>Total</span>
+              <span><?= formatarPreco((float) ($order['total_amount'] ?? ($itemsTotal + $shippingFee))) ?></span>
+            </div>
+          </section>
+        <?php endif; ?>
+
+        <div class="receipt__actions">
+          <a class="btn btn--whats" href="<?= e(client_whatsapp_url($whatsMessage)) ?>" target="_blank" rel="noreferrer"><?= bmc_icon('whatsapp') ?> Falar com a loja</a>
+          <a class="btn btn--ghost" href="<?= e($trackUrl) ?>">Acompanhar pedido</a>
+          <a class="btn btn--ghost" href="<?= e(app_url('/produtos')) ?>">Continuar comprando</a>
         </div>
-      </section>
+      </div>
     </main>
 
-    <?php commerce_footer_minimal($clientLegalName); ?>
-    <?php site_nav_scripts(); ?>
+    <?php commerce_footer_minimal(); ?>
     <?php commerce_assets(); ?>
+    <?php site_nav_scripts(); ?>
   </body>
 </html>

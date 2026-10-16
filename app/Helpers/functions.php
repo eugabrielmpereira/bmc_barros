@@ -196,6 +196,44 @@ if (!function_exists('commerce_assets')) {
     }
 }
 
+if (!function_exists('catalog_department_tree')) {
+    /**
+     * Departamentos do catálogo (raízes + subcategorias) para menus do site, com cache por requisição.
+     *
+     * @return list<array<string, mixed>>
+     */
+    function catalog_department_tree(): array {
+        static $tree = null;
+        if ($tree !== null) {
+            return $tree;
+        }
+
+        try {
+            $tree = (new \Erp\Products\Repositories\CategoryRepository())->getCatalogTree();
+        } catch (\Throwable) {
+            $tree = [];
+        }
+
+        return $tree;
+    }
+}
+
+if (!function_exists('client_partial_override')) {
+    /**
+     * Caminho de um partial do cliente ativo (Clients/{X}/Site/Views/partials/{name}.php), se existir.
+     * Permite que um cliente substitua cabeçalho/rodapé compartilhados sem duplicar todas as views.
+     */
+    function client_partial_override(string $name): ?string {
+        try {
+            $path = resolve_view_path('client::partials/' . $name);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return is_file($path) ? $path : null;
+    }
+}
+
 if (!function_exists('site_topbar')) {
     /**
      * @param array<string, mixed> $options brandHref, whatsappMessage, client
@@ -210,7 +248,8 @@ if (!function_exists('site_topbar')) {
         if (isset($options['whatsappMessage'])) {
             $whatsappMessage = $options['whatsappMessage'];
         }
-        require SHARED_PATH . '/View/site/site-topbar.php';
+        $override = client_partial_override('site-header');
+        require $override ?? (SHARED_PATH . '/View/site/site-topbar.php');
     }
 }
 
@@ -222,6 +261,9 @@ if (!function_exists('site_nav_scripts')) {
 
 if (!function_exists('commerce_page_styles')) {
     function commerce_page_styles(): void {
+        if (!empty($GLOBALS['__commerce_css_in_head'])) {
+            return;
+        }
         echo '<link rel="stylesheet" href="' . e(shared_commerce_asset('commerce.css')) . '" />' . "\n";
     }
 }
@@ -231,6 +273,13 @@ if (!function_exists('commerce_footer_minimal')) {
         if ($clientLegalName === null || $clientLegalName === '') {
             $config = client_config();
             $clientLegalName = (string) ($config['legalName'] ?? $config['name'] ?? 'Cliente');
+        }
+        $override = client_partial_override('site-footer');
+        if ($override !== null) {
+            $client = client_config();
+            require $override;
+
+            return;
         }
         require SHARED_PATH . '/View/site/commerce-footer-minimal.php';
     }
@@ -260,7 +309,8 @@ if (!function_exists('site_store_footer')) {
      */
     function site_store_footer(?array $client = null, bool $withLogo = true): void {
         $client ??= client_config();
-        require SHARED_PATH . '/View/site/store-footer.php';
+        $override = client_partial_override('site-footer');
+        require $override ?? (SHARED_PATH . '/View/site/store-footer.php');
     }
 }
 

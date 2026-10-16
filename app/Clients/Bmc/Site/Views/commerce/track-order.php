@@ -9,19 +9,16 @@ $clientLegalName = (string) ($client['legalName'] ?? $clientName);
 <!doctype html>
 <html lang="pt-BR">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Acompanhar pedido | <?= e($clientName) ?></title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;700;800;900&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="<?= client_asset('css/style.css') ?>" />
-    <?php commerce_page_styles(); ?>
+    <?php
+      $pageTitle = 'Acompanhar pedido';
+      $noindex = true;
+      require __DIR__ . '/../partials/head.php';
+    ?>
   </head>
   <body>
     <?php site_topbar(['client' => $client]); ?>
 
-    <main class="commerce-page">
+    <main id="conteudo" class="commerce-page">
       <div class="commerce-page-header">
         <p class="eyebrow">Pedido online</p>
         <h1>Acompanhar pedido</h1>

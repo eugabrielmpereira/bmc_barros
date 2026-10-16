@@ -32,7 +32,7 @@ if ($count > 0) {
 
 $zones = [
     [
-        'name' => 'Rincão — cidade',
+        'name' => 'Rincão (cidade toda)',
         'city' => 'Rincão',
         'state' => 'SP',
         'neighborhoods' => null,
