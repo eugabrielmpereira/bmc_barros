@@ -41,6 +41,14 @@ Manual pedagógico para entender como o sistema funciona (rastreio de requisiç�
 | **[docs/BMC_GOLIVE_CHECKLIST.md](docs/BMC_GOLIVE_CHECKLIST.md)** | Checklist de go-live BMC Barros |
 | **[docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md)** | Checklist de validação local |
 
+## Loja BMC (Cliente 1)
+
+- Vitrine própria em `app/Clients/Bmc/Site/` (header, rodapé e cards em `Views/partials/`).
+- Frete por zona (bairro, faixa de CEP ou cidade) em **Admin → Frete e entregas** (`/admin/frete`).
+- Pagamento: Pix (QR na tela) e cartão de crédito parcelado (fatura hospedada Asaas).
+- SEO: `/sitemap.xml`, `/robots.txt`, Open Graph e dados estruturados de produto.
+- Colocar no ar: **[docs/DEPLOY_VPS.md](docs/DEPLOY_VPS.md)**.
+
 ## Como rodar localmente
 
 ### Pré-requisitos
@@ -63,9 +71,10 @@ Manual pedagógico para entender como o sistema funciona (rastreio de requisiç�
    ```
    Ajuste `BASE_URL`, `DB_*` e demais variáveis no `.env`.
 
-4. Crie o banco e todas as tabelas — importe no phpMyAdmin:
-   `database/schema/erp_product_full.sql`
-   (banco `erp_product`). Alternativa: `php migrate.php run` em banco vazio já criado.
+4. Crie o banco vazio `erp_product` e rode as migrations:
+   `php migrate.php run`
+   (o arquivo `database/schema/erp_product_full.sql` está desatualizado; use as migrations).
+   Para dados de demonstração: `php database/seeds/seed_catalog_attributes.php`, `php database/seeds/seed_catalog_mvp.php` e `php database/seeds/seed_delivery_zones.php`.
 
 5. Crie o usuário admin:
    ```bash

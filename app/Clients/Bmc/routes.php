@@ -8,9 +8,12 @@ use Clients\Bmc\Site\Controllers\CustomerAccountController;
 use Clients\Bmc\Site\Controllers\HomeController;
 use Clients\Bmc\Site\Controllers\LegalController;
 use Clients\Bmc\Site\Controllers\OrderTrackingController;
+use Erp\Commerce\Controllers\PublicSeoController;
 
 return [
     ['method' => 'GET', 'path' => '/', 'handler' => [HomeController::class, 'index'], 'middleware' => 'web'],
+    ['method' => 'GET', 'path' => '/sitemap.xml', 'handler' => [PublicSeoController::class, 'sitemap'], 'middleware' => 'web'],
+    ['method' => 'GET', 'path' => '/robots.txt', 'handler' => [PublicSeoController::class, 'robots'], 'middleware' => 'web'],
     ['method' => 'GET', 'path' => '/politica-de-privacidade', 'handler' => [LegalController::class, 'privacy'], 'middleware' => 'web'],
     ['method' => 'GET', 'path' => '/termos-de-uso', 'handler' => [LegalController::class, 'terms'], 'middleware' => 'web'],
     ['method' => 'GET', 'path' => '/entrar', 'handler' => [CustomerAccountController::class, 'loginForm'], 'middleware' => 'web'],

@@ -1,5 +1,16 @@
 # Checklist Go-Live — BMC Barros
 
+> Passo a passo de servidor, domínio, HTTPS e backup: [`DEPLOY_VPS.md`](DEPLOY_VPS.md).
+
+## 0. Pendências da loja (bloqueiam a divulgação)
+
+- [ ] `STORE_CNPJ` preenchido no `.env` (rodapé esconde o CNPJ enquanto estiver vazio).
+- [ ] Zonas de frete reais em `/admin/frete` (bairros/cidades, valores, frete grátis, pedido mínimo, prazo).
+- [ ] Fotos reais dos produtos mais vendidos (os cards mostram um pictograma enquanto não houver foto).
+- [ ] Cartão habilitado na conta Asaas — ou `PAYMENT_CARD_ENABLED=false`.
+- [ ] Webhook Asaas de produção apontando para `https://{dominio}/webhooks/asaas`.
+- [ ] Textos de privacidade e termos revisados (marcados como versão preliminar).
+
 > Executar após validação local completa ([`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md)) e aceite do MVP de e-commerce.
 
 ## 1. Ambiente De Produção

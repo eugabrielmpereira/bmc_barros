@@ -60,11 +60,19 @@ class ProductRepository extends Repository
      */
     public function allActive(?int $categoriaId = null, string $searchQuery = '', ?int $brandId = null): array
     {
-        return $this->searchActiveCatalog(
-            new CatalogProductFilter($categoriaId, $searchQuery, $brandId),
-            1000,
-            0
-        )['items'];
+        // searchActiveCatalog limita a página a 48 itens; percorre todas as páginas.
+        $filter = new CatalogProductFilter($categoriaId, $searchQuery, $brandId);
+        $pageSize = 48;
+        $items = [];
+        for ($offset = 0; ; $offset += $pageSize) {
+            $page = $this->searchActiveCatalog($filter, $pageSize, $offset);
+            $items = array_merge($items, $page['items']);
+            if (count($page['items']) < $pageSize || count($items) >= (int) $page['total']) {
+                break;
+            }
+        }
+
+        return $items;
     }
 
     public function countActiveCatalog(CatalogProductFilter $filter): int

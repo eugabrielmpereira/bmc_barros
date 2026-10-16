@@ -1,3 +1,6 @@
+-- [LEGADO] Snapshot antigo do schema (até as migrations de 2026-05-28).
+-- Use `php migrate.php run` em um banco vazio: as migrations são a fonte oficial.
+
 -- =============================================================================
 -- ERP Produto — Schema completo (MySQL / XAMPP)
 -- Banco: erp_product
