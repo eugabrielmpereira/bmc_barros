@@ -104,6 +104,72 @@ final class AsaasPixGateway implements PaymentGatewayInterface
         ];
     }
 
+    public function createCardCharge(array $context): array
+    {
+        if (!$this->isEnabled()) {
+            return ['success' => false, 'message' => 'Gateway Asaas desabilitado.'];
+        }
+
+        $orderId = (int) ($context['order_id'] ?? 0);
+        $amount = round((float) ($context['amount'] ?? 0), 2);
+        if ($orderId <= 0 || $amount <= 0) {
+            return ['success' => false, 'message' => 'Pedido ou valor inválido para cobrança no cartão.'];
+        }
+
+        $document = $this->onlyDigits((string) ($context['customer_document'] ?? ''));
+        if ($document === '') {
+            return ['success' => false, 'message' => 'CPF/CNPJ obrigatório para cobrança no cartão.'];
+        }
+
+        $customerId = $this->findOrCreateCustomer($context, $document);
+        if ($customerId === null) {
+            return ['success' => false, 'message' => 'Não foi possível registrar o cliente no gateway.'];
+        }
+
+        $reference = trim((string) ($context['public_reference'] ?? ''));
+        $installments = max(1, min((int) ($context['installments'] ?? 1), 12));
+        $dueDate = (new \DateTimeImmutable('today'))->modify('+1 day')->format('Y-m-d');
+
+        $payload = [
+            'customer' => $customerId,
+            'billingType' => 'CREDIT_CARD',
+            'dueDate' => $dueDate,
+            'description' => $reference !== '' ? 'Pedido ' . $reference : 'Pedido #' . $orderId,
+            'externalReference' => (string) $orderId,
+        ];
+
+        if ($installments > 1) {
+            // Asaas divide o total em N parcelas; o cliente informa o cartão na fatura hospedada.
+            $payload['installmentCount'] = $installments;
+            $payload['totalValue'] = $amount;
+        } else {
+            $payload['value'] = $amount;
+        }
+
+        $response = $this->httpClient->post('/payments', $payload);
+        if (!$response['success'] || !is_array($response['data'])) {
+            error_log('[asaas_card] create payment failed: ' . $response['message']);
+
+            return ['success' => false, 'message' => $response['message']];
+        }
+
+        $payment = $response['data'];
+        $paymentId = (string) ($payment['id'] ?? '');
+        if ($paymentId === '') {
+            return ['success' => false, 'message' => 'Gateway não retornou identificador da cobrança.'];
+        }
+
+        return [
+            'success' => true,
+            'message' => 'Cobrança no cartão criada.',
+            'external_payment_id' => $paymentId,
+            'external_customer_id' => $customerId,
+            'status' => (string) ($payment['status'] ?? 'PENDING'),
+            'due_date' => $dueDate,
+            'invoice_url' => (string) ($payment['invoiceUrl'] ?? ''),
+        ];
+    }
+
     /**
      * @param array<string, mixed> $context
      */

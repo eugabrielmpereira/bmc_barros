@@ -63,6 +63,11 @@ final class OrderServiceTest extends TestCase
                 payment_status TEXT NOT NULL DEFAULT \'not_applicable\',
                 paid_at TEXT,
                 total_amount REAL NOT NULL DEFAULT 0,
+                shipping_fee REAL NOT NULL DEFAULT 0,
+                delivery_zone_id INTEGER,
+                delivery_zone_name TEXT,
+                payment_method TEXT NOT NULL DEFAULT \'pix\',
+                installments INTEGER NOT NULL DEFAULT 1,
                 notes TEXT,
                 customer_notes TEXT,
                 internal_notes TEXT,
@@ -82,6 +87,21 @@ final class OrderServiceTest extends TestCase
                 created_by INTEGER,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+             );
+             CREATE TABLE delivery_zones (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                city TEXT NOT NULL,
+                state TEXT NOT NULL,
+                neighborhoods TEXT,
+                postal_code_start TEXT,
+                postal_code_end TEXT,
+                fee REAL NOT NULL DEFAULT 0,
+                free_shipping_min REAL,
+                min_order_amount REAL,
+                lead_time TEXT,
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                status TEXT NOT NULL DEFAULT \'active\'
              );
              CREATE TABLE order_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -291,7 +311,10 @@ final class OrderServiceTest extends TestCase
         $this->assertSame('draft', $order['status']);
         $this->assertSame(69.0, (float) $order['total_amount']);
         $this->assertNull($order['notes']);
-        $this->assertSame('Pedido online recebido pelo site público.', $order['internal_notes']);
+        $this->assertStringStartsWith('Pedido online recebido pelo site público.', (string) $order['internal_notes']);
+        $this->assertStringContainsString('Frete a combinar', (string) $order['internal_notes']);
+        $this->assertSame(0.0, (float) $order['shipping_fee']);
+        $this->assertSame('pix', $order['payment_method']);
         $this->assertSame('Entregar de manhã', $order['customer_notes']);
         $this->assertStringStartsWith('TST-', (string) $order['public_reference']);
         $this->assertSame('01310-100', $order['shipping_postal_code']);
@@ -664,6 +687,64 @@ final class OrderServiceTest extends TestCase
 
         $activeAfterCancel = (int) $this->pdo->query("SELECT COUNT(*) FROM stock_reservations WHERE status = 'active'")->fetchColumn();
         $this->assertSame(0, $activeAfterCancel);
+    }
+
+    public function testCreatePublicDraftAddsZoneShippingFeeToTotal(): void
+    {
+        $this->pdo->exec("INSERT INTO delivery_zones (name, city, state, neighborhoods, fee, status) VALUES ('Centro SP', 'São Paulo', 'SP', 'Bela Vista', 15.00, 'active')");
+
+        $result = $this->service->createPublicDraft($this->checkoutCustomer(), [
+            ['product_id' => 1, 'quantity' => 2, 'unit_price' => 25.50, 'name' => 'Cimento'],
+        ], ['orderReferencePrefix' => 'TST']);
+
+        $this->assertTrue($result['success'], implode(' ', $result['errors']));
+        $order = $this->pdo->query('SELECT * FROM orders WHERE id = ' . (int) $result['id'])->fetch(PDO::FETCH_ASSOC);
+        $this->assertSame(15.0, (float) $order['shipping_fee']);
+        $this->assertSame(66.0, (float) $order['total_amount']);
+        $this->assertSame('Centro SP', $order['delivery_zone_name']);
+        $this->assertStringNotContainsString('Frete a combinar', (string) $order['internal_notes']);
+    }
+
+    public function testCreatePublicDraftRejectsAddressOutsideDeliveryZones(): void
+    {
+        $this->pdo->exec("INSERT INTO delivery_zones (name, city, state, fee, status) VALUES ('Rincão', 'Rincão', 'SP', 10.00, 'active')");
+
+        $result = $this->service->createPublicDraft($this->checkoutCustomer(), [
+            ['product_id' => 1, 'quantity' => 1, 'unit_price' => 25.50, 'name' => 'Cimento'],
+        ]);
+
+        $this->assertFalse($result['success']);
+        $this->assertArrayHasKey('shipping', $result['field_errors']);
+        $this->assertSame(0, (int) $this->pdo->query('SELECT COUNT(*) FROM orders')->fetchColumn());
+    }
+
+    public function testCreatePublicDraftPickupIgnoresZonesAndHasNoFee(): void
+    {
+        $this->pdo->exec("INSERT INTO delivery_zones (name, city, state, fee, status) VALUES ('Rincão', 'Rincão', 'SP', 10.00, 'active')");
+
+        $result = $this->service->createPublicDraft($this->checkoutCustomer(['delivery_method' => 'pickup']), [
+            ['product_id' => 1, 'quantity' => 1, 'unit_price' => 25.50, 'name' => 'Cimento'],
+        ]);
+
+        $this->assertTrue($result['success'], implode(' ', $result['errors']));
+        $order = $this->pdo->query('SELECT * FROM orders WHERE id = ' . (int) $result['id'])->fetch(PDO::FETCH_ASSOC);
+        $this->assertSame(0.0, (float) $order['shipping_fee']);
+        $this->assertSame(25.5, (float) $order['total_amount']);
+    }
+
+    public function testCreatePublicDraftFallsBackToPixWhenCardUnavailable(): void
+    {
+        $result = $this->service->createPublicDraft($this->checkoutCustomer([
+            'payment_method' => 'credit_card',
+            'installments' => '6',
+        ]), [
+            ['product_id' => 1, 'quantity' => 1, 'unit_price' => 25.50, 'name' => 'Cimento'],
+        ]);
+
+        $this->assertTrue($result['success']);
+        $order = $this->pdo->query('SELECT * FROM orders WHERE id = ' . (int) $result['id'])->fetch(PDO::FETCH_ASSOC);
+        $this->assertSame('pix', $order['payment_method']);
+        $this->assertSame(1, (int) $order['installments']);
     }
 
     /**

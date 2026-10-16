@@ -47,6 +47,11 @@ $paginaAtiva = $paginaAtiva ?? '';
                 </a>
             </li>
             <li>
+                <a href="<?= url('/admin/frete') ?>"<?= $paginaAtiva === 'frete' ? ' aria-current="page"' : '' ?>>
+                    Frete e entregas
+                </a>
+            </li>
+            <li>
                 <a href="<?= url('/admin/contas-a-receber') ?>"<?= $paginaAtiva === 'contas-a-receber' ? ' aria-current="page"' : '' ?>>
                     Contas a receber
                 </a>

@@ -48,4 +48,22 @@ final class FakePaymentGateway implements PaymentGatewayInterface
 
         return $this->chargeResult;
     }
+
+    /** @var array<string, mixed>|null */
+    public ?array $lastCardContext = null;
+
+    /**
+     * @param array<string, mixed> $context
+     * @return array<string, mixed>
+     */
+    public function createCardCharge(array $context): array
+    {
+        $this->createCallCount++;
+        $this->lastCardContext = $context;
+
+        return array_merge($this->chargeResult, [
+            'pix_copy_paste' => null,
+            'invoice_url' => 'https://example.test/card-invoice/1',
+        ]);
+    }
 }

@@ -228,6 +228,21 @@ if ($clientName !== '') {
                 <?php endif; ?>
                 </tbody>
             </table>
+            <?php
+                $orderShippingFee = (float) ($order['shipping_fee'] ?? 0);
+                $orderPaymentMethod = \Erp\Finance\Support\PaymentMethod::parse((string) ($order['payment_method'] ?? 'pix'));
+                $orderInstallments = max(1, (int) ($order['installments'] ?? 1));
+            ?>
+            <?php if ($deliveryMethod === DeliveryMethod::DELIVERY): ?>
+                <div class="order-total-row">
+                    <span class="text-muted">Frete<?= !empty($order['delivery_zone_name']) ? ' — ' . e((string) $order['delivery_zone_name']) : '' ?></span>
+                    <span><?= $orderShippingFee > 0 ? formatarPreco($orderShippingFee) : (!empty($order['delivery_zone_name']) ? 'Grátis' : 'A combinar') ?></span>
+                </div>
+            <?php endif; ?>
+            <div class="order-total-row">
+                <span class="text-muted">Pagamento escolhido</span>
+                <span><?= e(\Erp\Finance\Support\PaymentMethod::label($orderPaymentMethod, $orderInstallments)) ?></span>
+            </div>
             <div class="order-total-row">
                 <span class="text-muted">Total</span>
                 <strong><?= formatarPreco((float) ($order['total_amount'] ?? 0)) ?></strong>

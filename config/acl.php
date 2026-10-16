@@ -19,7 +19,7 @@ return [
         '/admin/auditoria',
         '/admin/logout',
         '/admin/categorias*',
-        '/admin/usuarios*',
+        '/admin/frete*',
         '/admin/inventario-rapido*',
     ],
     'operator' => [

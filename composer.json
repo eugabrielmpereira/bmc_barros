@@ -19,6 +19,7 @@
             "Clients\\": "app/Clients/",
             "Shared\\": "app/Shared/",
             "Core\\": "core/",
+            "Database\\Migrations\\": "database/migrations/",
             "Database\\": "database/"
         },
         "files": [

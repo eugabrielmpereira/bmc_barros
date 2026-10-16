@@ -7,6 +7,7 @@ use Erp\Admin\Controllers\AdminCommercialClientController;
 use Erp\Admin\Controllers\AdminController;
 use Erp\Admin\Controllers\AdminOrderController;
 use Erp\Admin\Controllers\AdminCategoryController;
+use Erp\Admin\Controllers\AdminDeliveryZoneController;
 use Erp\Admin\Controllers\AdminProductController;
 use Erp\Admin\Controllers\AdminQuickInventoryController;
 use Erp\Admin\Controllers\AdminReceivableController;
@@ -25,6 +26,12 @@ return [
     ['method' => 'GET', 'path' => '/admin/inventario-rapido', 'handler' => [AdminQuickInventoryController::class, 'index'], 'middleware' => 'admin'],
     ['method' => 'POST', 'path' => '/admin/inventario-rapido', 'handler' => [AdminQuickInventoryController::class, 'update'], 'middleware' => 'admin'],
 
+    ['method' => 'GET', 'path' => '/admin/frete', 'handler' => [AdminDeliveryZoneController::class, 'index'], 'middleware' => 'admin'],
+    ['method' => 'GET', 'path' => '/admin/frete/criar', 'handler' => [AdminDeliveryZoneController::class, 'create'], 'middleware' => 'admin'],
+    ['method' => 'POST', 'path' => '/admin/frete/criar', 'handler' => [AdminDeliveryZoneController::class, 'store'], 'middleware' => 'admin'],
+    ['method' => 'GET', 'path' => '/admin/frete/editar/:id', 'handler' => [AdminDeliveryZoneController::class, 'edit'], 'middleware' => 'admin'],
+    ['method' => 'POST', 'path' => '/admin/frete/editar/:id', 'handler' => [AdminDeliveryZoneController::class, 'update'], 'middleware' => 'admin'],
+    ['method' => 'POST', 'path' => '/admin/frete/deletar/:id', 'handler' => [AdminDeliveryZoneController::class, 'delete'], 'middleware' => 'admin'],
     ['method' => 'GET', 'path' => '/admin/categorias', 'handler' => [AdminCategoryController::class, 'index'], 'middleware' => 'admin'],
     ['method' => 'GET', 'path' => '/admin/categorias/criar', 'handler' => [AdminCategoryController::class, 'create'], 'middleware' => 'admin'],
     ['method' => 'POST', 'path' => '/admin/categorias/criar', 'handler' => [AdminCategoryController::class, 'store'], 'middleware' => 'admin'],

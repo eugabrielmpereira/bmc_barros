@@ -32,6 +32,7 @@ return [
     ['method' => 'POST', 'path' => '/produtos/avisar-estoque', 'handler' => [CartController::class, 'subscribeStockAlert'], 'middleware' => 'web'],
     ['method' => 'POST', 'path' => '/carrinho/atualizar', 'handler' => [CartController::class, 'update'], 'middleware' => 'web'],
     ['method' => 'POST', 'path' => '/carrinho/remover', 'handler' => [CartController::class, 'remove'], 'middleware' => 'web'],
+    ['method' => 'POST', 'path' => '/frete/cotacao', 'handler' => [CartController::class, 'quoteShipping'], 'middleware' => 'web'],
     ['method' => 'GET', 'path' => '/cep-consulta', 'handler' => [CartController::class, 'lookupPostalCode'], 'middleware' => 'web'],
     ['method' => 'GET', 'path' => '/checkout', 'handler' => [CartController::class, 'checkout'], 'middleware' => 'web'],
     ['method' => 'POST', 'path' => '/checkout', 'handler' => [CartController::class, 'placeOrder'], 'middleware' => 'web'],

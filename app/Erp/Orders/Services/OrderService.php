@@ -12,6 +12,9 @@ use Shared\Support\TaxId;
 use Erp\Audit\Services\AuditService;
 use Erp\Finance\Services\PaymentChargeService;
 use Erp\Finance\Services\ReceivableService;
+use Erp\Finance\Support\PaymentMethod;
+use Erp\Shipping\Repositories\DeliveryZoneRepository;
+use Erp\Shipping\Services\ShippingQuoteService;
 use Erp\Fulfillment\Support\DeliveryMethod;
 use Erp\Fulfillment\Services\FulfillmentService;
 use Erp\Commercial\Repositories\CommercialClientRepository;
@@ -49,7 +52,8 @@ final class OrderService implements PublicOrderReceiptReader
         private ?StockAvailabilityService $stockAvailabilityService = null,
         private ?ReceivableService $receivableService = null,
         private ?PaymentChargeService $paymentChargeService = null,
-        private ?FulfillmentService $fulfillmentService = null
+        private ?FulfillmentService $fulfillmentService = null,
+        private ?ShippingQuoteService $shippingQuoteService = null
     ) {
         $this->pdo ??= Database::getInstance();
         $this->orderRepository ??= new OrderRepository($this->pdo);
@@ -65,6 +69,7 @@ final class OrderService implements PublicOrderReceiptReader
         $this->receivableService ??= new ReceivableService($this->pdo, $this->orderRepository, $this->auditService);
         $this->paymentChargeService ??= new PaymentChargeService($this->pdo);
         $this->fulfillmentService ??= new FulfillmentService($this->orderRepository);
+        $this->shippingQuoteService ??= new ShippingQuoteService(new DeliveryZoneRepository($this->pdo));
     }
 
     /**
@@ -255,16 +260,51 @@ final class OrderService implements PublicOrderReceiptReader
             ];
         }
 
-        $total = array_reduce(
+        $subtotal = round(array_reduce(
             $items,
             fn (float $sum, array $item): float => $sum + ((float) $item['unit_price'] * (int) $item['quantity']),
             0.0
+        ), 2);
+
+        // Frete sempre recalculado no servidor — nunca confiar em valor enviado pelo navegador.
+        $shippingQuote = $this->shippingQuoteService->quote(
+            (string) ($customerData['delivery_method'] ?? DeliveryMethod::DELIVERY),
+            $customerData,
+            $subtotal
         );
+        if (!$shippingQuote['available']) {
+            return [
+                'success' => false,
+                'errors' => [$shippingQuote['message']],
+                'data' => $customerData,
+                'field_errors' => ['shipping' => $shippingQuote['message']],
+            ];
+        }
+
+        $shippingFee = (float) $shippingQuote['fee'];
+        $total = round($subtotal + $shippingFee, 2);
+
+        $paymentMethod = PaymentMethod::parse((string) ($post['payment_method'] ?? PaymentMethod::PIX));
+        if ($paymentMethod === PaymentMethod::CREDIT_CARD && !PaymentMethod::cardEnabled()) {
+            $paymentMethod = PaymentMethod::PIX;
+        }
+        $installments = 1;
+        if ($paymentMethod === PaymentMethod::CREDIT_CARD) {
+            $installments = max(1, min(
+                (int) ($post['installments'] ?? 1),
+                PaymentMethod::allowedInstallments($total)
+            ));
+        }
+        $customerData['payment_method'] = $paymentMethod;
+        $customerData['installments'] = $installments;
 
         $customerNotes = trim((string) ($customerData['notes'] ?? ''));
         $internalNotes = self::ONLINE_ORDER_NOTE_PREFIX;
         if (!empty($customerData['cep_server_validation_deferred'])) {
             $internalNotes .= "\nCEP não validado no servidor — revisar endereço antes da expedição.";
+        }
+        if ($shippingQuote['mode'] === ShippingQuoteService::MODE_TO_ARRANGE) {
+            $internalNotes .= "\nFrete a combinar — nenhuma zona de entrega cadastrada.";
         }
         $shippingComplement = BrazilianAddress::mergeComplementAndReference(
             (string) ($customerData['shipping_complement'] ?? ''),
@@ -290,6 +330,11 @@ final class OrderService implements PublicOrderReceiptReader
                 'commercial_client_id' => $clientId,
                 'status' => 'draft',
                 'total_amount' => $total,
+                'shipping_fee' => $shippingFee,
+                'delivery_zone_id' => $shippingQuote['zone_id'],
+                'delivery_zone_name' => $shippingQuote['zone_name'],
+                'payment_method' => $paymentMethod,
+                'installments' => $installments,
                 'notes' => null,
                 'internal_notes' => $internalNotes,
                 'customer_notes' => $customerNotes !== '' ? $customerNotes : null,
@@ -807,7 +852,9 @@ final class OrderService implements PublicOrderReceiptReader
 
     private function recalculateOrderTotal(int $orderId): void
     {
-        $total = $this->itemRepository->sumTotalByOrder($orderId);
+        $order = $this->orderRepository->find($orderId);
+        $shippingFee = (float) ($order['shipping_fee'] ?? 0);
+        $total = round($this->itemRepository->sumTotalByOrder($orderId) + $shippingFee, 2);
         $this->orderRepository->updateTotalAmount($orderId, $total);
     }
 

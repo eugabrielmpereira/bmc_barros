@@ -61,6 +61,24 @@ final class PaymentChargeServiceTest extends TestCase
         $this->assertSame(1, $rowCount);
     }
 
+    public function testCardOrderCreatesCardChargeWithInstallments(): void
+    {
+        $this->pdo->exec("UPDATE orders SET payment_method = 'credit_card', installments = 3 WHERE id = 7");
+
+        $charge = $this->service->createPixForOnlineOrder(7, [
+            'name' => 'Maria Silva',
+            'email' => 'maria@example.com',
+            'phone' => '16999990000',
+            'document' => '39053344705',
+        ]);
+
+        $this->assertNotNull($charge);
+        $this->assertSame('CREDIT_CARD', (string) $charge['billing_type']);
+        $this->assertSame('https://example.test/card-invoice/1', (string) $charge['invoice_url']);
+        $this->assertSame(3, (int) ($this->gateway->lastCardContext['installments'] ?? 0));
+        $this->assertSame(199.9, (float) ($this->gateway->lastCardContext['amount'] ?? 0));
+    }
+
     public function testCreatePixForOnlineOrderIsIdempotentForSameOrder(): void
     {
         $customerData = [

@@ -9,6 +9,7 @@ use Erp\Finance\Contracts\PaymentGatewayInterface;
 use Erp\Finance\Gateways\Asaas\AsaasPixGateway;
 use Erp\Finance\Gateways\PaymentGatewayFactory;
 use Erp\Finance\Repositories\PaymentChargeRepository;
+use Erp\Finance\Support\PaymentMethod;
 use Erp\Orders\Repositories\OrderRepository;
 use PDO;
 use PDOException;
@@ -57,8 +58,10 @@ final class PaymentChargeService
             return null;
         }
 
+        $isCard = PaymentMethod::parse((string) ($order['payment_method'] ?? PaymentMethod::PIX)) === PaymentMethod::CREDIT_CARD;
+
         try {
-            $result = $gateway->createPixCharge([
+            $context = [
                 'order_id' => $orderId,
                 'public_reference' => (string) ($order['public_reference'] ?? ''),
                 'amount' => (float) ($order['total_amount'] ?? 0),
@@ -66,7 +69,14 @@ final class PaymentChargeService
                 'customer_email' => (string) ($customerData['email'] ?? ''),
                 'customer_phone' => (string) ($customerData['phone'] ?? ''),
                 'customer_document' => (string) ($customerData['document'] ?? ''),
-            ]);
+            ];
+
+            if ($isCard) {
+                $context['installments'] = max(1, (int) ($order['installments'] ?? 1));
+                $result = $gateway->createCardCharge($context);
+            } else {
+                $result = $gateway->createPixCharge($context);
+            }
 
             if (!$result['success']) {
                 error_log('[payment_charge] order ' . $orderId . ': ' . ($result['message'] ?? 'falha'));
@@ -81,7 +91,7 @@ final class PaymentChargeService
                     'external_payment_id' => (string) ($result['external_payment_id'] ?? ''),
                     'external_customer_id' => $result['external_customer_id'] ?? null,
                     'status' => (string) ($result['status'] ?? 'PENDING'),
-                    'billing_type' => 'PIX',
+                    'billing_type' => $isCard ? 'CREDIT_CARD' : 'PIX',
                     'amount' => (float) ($order['total_amount'] ?? 0),
                     'due_date' => (string) ($result['due_date'] ?? date('Y-m-d')),
                     'pix_copy_paste' => $result['pix_copy_paste'] ?? null,

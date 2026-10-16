@@ -12,7 +12,11 @@ use Erp\Customers\Services\CustomerAccountService;
 use Erp\Customers\Services\CustomerAuthService;
 use Erp\Finance\Services\PaymentChargeService;
 use Erp\Orders\Services\OrderService;
+use Erp\Finance\Support\PaymentMethod;
 use Erp\Products\Services\StockAlertService;
+use Erp\Shipping\Services\ShippingQuoteService;
+use Shared\Support\BrazilianAddress;
+use Throwable;
 
 abstract class PublicCartController extends Controller
 {
@@ -23,7 +27,8 @@ abstract class PublicCartController extends Controller
         private ?StockAlertService $stockAlertService = null,
         private ?CustomerAuthService $customerAuthService = null,
         private ?CustomerAccountService $customerAccountService = null,
-        private ?PaymentChargeService $paymentChargeService = null
+        private ?PaymentChargeService $paymentChargeService = null,
+        private ?ShippingQuoteService $shippingQuoteService = null
     ) {
         $this->cartService ??= new CartService();
         $this->orderService ??= new OrderService();
@@ -32,6 +37,7 @@ abstract class PublicCartController extends Controller
         $this->customerAuthService ??= new CustomerAuthService();
         $this->customerAccountService ??= new CustomerAccountService();
         $this->paymentChargeService ??= new PaymentChargeService();
+        $this->shippingQuoteService ??= new ShippingQuoteService();
     }
 
     public function index(): void
@@ -200,6 +206,36 @@ abstract class PublicCartController extends Controller
         $this->respondJson($result, $status);
     }
 
+    /**
+     * Cotação informativa de frete para o checkout (o pedido recalcula no servidor).
+     */
+    public function quoteShipping(): void
+    {
+        if (!$this->validateCsrfForRequest()) {
+            $this->abortCsrf();
+            return;
+        }
+
+        $cart = $this->cartService->summary();
+        $subtotal = round((float) ($cart['subtotal'] ?? 0), 2);
+        $address = BrazilianAddress::parseCheckoutPost($_POST);
+        $quote = $this->shippingQuoteService->quote((string) ($_POST['delivery_method'] ?? 'delivery'), $address, $subtotal);
+        $total = round($subtotal + (float) $quote['fee'], 2);
+
+        $this->respondJson([
+            'success' => true,
+            'quote' => $quote,
+            'subtotal' => $subtotal,
+            'subtotal_label' => formatarPreco($subtotal),
+            'shipping_label' => $quote['mode'] === ShippingQuoteService::MODE_TO_ARRANGE
+                ? 'A combinar'
+                : ((float) $quote['fee'] > 0 ? formatarPreco((float) $quote['fee']) : 'Grátis'),
+            'total' => $total,
+            'total_label' => formatarPreco($total),
+            'installment_options' => PaymentMethod::cardEnabled() ? PaymentMethod::installmentOptions($total) : [],
+        ]);
+    }
+
     public function placeOrder(): void
     {
         Csrf::requireValidPostOrAbort();
@@ -272,6 +308,7 @@ abstract class PublicCartController extends Controller
             'order' => $receipt['order'],
             'items' => $receipt['items'],
             'pix_charge' => $pixCharge ?? $this->paymentChargeService->findForOrder($orderId),
+            'payment_method' => PaymentMethod::parse((string) ($receipt['order']['payment_method'] ?? PaymentMethod::PIX)),
         ]);
     }
 
@@ -293,13 +330,24 @@ abstract class PublicCartController extends Controller
             }
         }
 
+        $cart = $this->cartService->summary();
+        $subtotal = round((float) ($cart['subtotal'] ?? 0), 2);
+        $deliveryMethod = (string) ($data['delivery_method'] ?? 'delivery');
+        $quote = $this->shippingQuoteService->quote($deliveryMethod, $data, $subtotal);
+        $total = round($subtotal + (float) $quote['fee'], 2);
+
         $this->view('client::commerce/checkout', [
             'client' => client_config(),
-            'cart' => $this->cartService->summary(),
+            'cart' => $cart,
             'errors' => $errors,
             'field_errors' => $fieldErrors,
             'data' => $data,
             'logged_in' => $this->customerAuthService->isAuthenticated(),
+            'shipping_quote' => $quote,
+            'shipping_zones_configured' => $this->shippingQuoteService->hasZonesConfigured(),
+            'order_total' => $total,
+            'card_enabled' => PaymentMethod::cardEnabled(),
+            'installment_options' => PaymentMethod::cardEnabled() ? PaymentMethod::installmentOptions($total) : [],
         ]);
     }
 
