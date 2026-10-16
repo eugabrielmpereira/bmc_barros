@@ -59,12 +59,17 @@ final class TenantResolver
         string $envBaseUrl,
         array $clientBaseUrls
     ): string {
+        // Em modo env (loja única) vale sempre o BASE_URL do .env; o mapa por tenant só vale em modo domain.
+        if ($resolution !== 'domain') {
+            return rtrim($envBaseUrl, '/');
+        }
+
         $configured = trim((string) ($clientBaseUrls[$clientKey] ?? ''));
         if ($configured !== '') {
             return rtrim($configured, '/');
         }
 
-        if ($resolution === 'domain' && is_array($server)) {
+        if (is_array($server)) {
             $derived = self::baseUrlFromRequest($server);
             if ($derived !== '') {
                 return $derived;

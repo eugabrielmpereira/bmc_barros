@@ -49,7 +49,21 @@ Manual pedagógico para entender como o sistema funciona (rastreio de requisiç�
 - SEO: `/sitemap.xml`, `/robots.txt`, Open Graph e dados estruturados de produto.
 - Colocar no ar: **[docs/DEPLOY_VPS.md](docs/DEPLOY_VPS.md)**.
 
-## Como rodar localmente
+## Rodar no Windows sem XAMPP
+
+Precisa de: Git, MySQL Server (serviço `MySQL80` rodando). O script instala PHP 8.3 (winget) e Composer se faltarem.
+
+```powershell
+# primeira vez: PHP, php.ini, Composer, .env, banco, migrations, dados de exemplo e admin
+powershell -ExecutionPolicy Bypass -File scripts\dev-windows.ps1 -Setup -Demo
+
+# dia a dia: sobe a loja em http://localhost:8000
+powershell -ExecutionPolicy Bypass -File scripts\dev-windows.ps1
+```
+
+Sem o script: `php -S localhost:8000 -t public server.php` (o `server.php` faz o papel do `.htaccess`).
+
+## Como rodar localmente (XAMPP)
 
 ### Pré-requisitos
 

@@ -125,4 +125,17 @@ final class TenantResolverTest extends TestCase
 
         $this->assertSame('http://localhost/bmc_barros/public', $url);
     }
+
+    public function testEnvModeIgnoresPerTenantBaseUrlMap(): void
+    {
+        $url = TenantResolver::resolveBaseUrl(
+            'env',
+            'bmc',
+            ['HTTP_HOST' => 'localhost:8000', 'SCRIPT_NAME' => '/index.php'],
+            'http://localhost:8000/',
+            ['bmc' => 'http://bmc.local']
+        );
+
+        $this->assertSame('http://localhost:8000', $url);
+    }
 }
